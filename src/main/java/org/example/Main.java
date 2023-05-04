@@ -2,6 +2,8 @@ package org.example;
 
 import java.io.FileNotFoundException;
 import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 
 import static org.example.Data.*;
 
@@ -28,17 +30,19 @@ public class Main {
 //        generateData(n);
         readData(n);
 
+        CountDownLatch latch = new CountDownLatch(2); // To wait for both equations to finish
+        CyclicBarrier barrier = new CyclicBarrier(2); // To synchronize the start of both equations
+
         // Y = D * MT + max(B) * D
-        Thread thread1 = new Thread(EquationThreads.firstEquationThread());
+        Thread thread1 = new Thread(EquationThreads.firstEquationThread(latch, barrier));
         // MA = MT * (MT + MZ) - MZ * MT
-        Thread thread2 = new Thread(EquationThreads.secondEquationThread());
+        Thread thread2 = new Thread(EquationThreads.secondEquationThread(latch, barrier));
 
         thread1.start();
         thread2.start();
 
         try {
-            thread1.join();
-            thread2.join();
+            latch.await(); // Wait for both equations to finish
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

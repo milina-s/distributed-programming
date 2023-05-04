@@ -1,14 +1,24 @@
 package org.example;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+
 import static org.example.Main.*;
 
 public class EquationThreads {
 
-    public static Runnable firstEquationThread() {
+    public static Runnable firstEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
         return () -> {
             Thread.currentThread().setName("First equation thread");
-            long startTime = System.currentTimeMillis();
             System.out.println(Thread.currentThread().getName() + " was started");
+
+            try {
+                barrier.await(); // Wait for both equations to reach the barrier
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            long startTime = System.currentTimeMillis();
 
             // Y = D * MT + max(B) * D
 
@@ -27,14 +37,22 @@ public class EquationThreads {
             long endTime = System.currentTimeMillis();
             System.out.println(Thread.currentThread().getName() + " was finished in " + (endTime - startTime) + " ms");
 
+            latch.countDown(); // Signal that this equation has finished
         };
     }
 
-    public static Runnable secondEquationThread() {
+    public static Runnable secondEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
         return () -> {
             Thread.currentThread().setName("Second equation thread");
-            long startTime = System.currentTimeMillis();
             System.out.println(Thread.currentThread().getName() + " was started");
+
+            try {
+                barrier.await(); // Wait for both equations to reach the barrier
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            long startTime = System.currentTimeMillis();
 
             // MA = MT * (MT + MZ) - MZ * MT
 
@@ -53,6 +71,7 @@ public class EquationThreads {
             long endTime = System.currentTimeMillis();
             System.out.println(Thread.currentThread().getName() + " was finished in " + (endTime - startTime) + " ms");
 
+            latch.countDown(); // Signal that this equation has finished
         };
     }
 }
