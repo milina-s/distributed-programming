@@ -4,6 +4,8 @@ import java.io.FileNotFoundException;
 import java.util.Scanner;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.example.Data.*;
 
@@ -35,13 +37,14 @@ public class Main {
         CountDownLatch latch = new CountDownLatch(2); // To wait for both equations to finish
         CyclicBarrier barrier = new CyclicBarrier(2); // To synchronize the start of both equations
 
-        // Y = D * MT + max(B) * D
-        Thread thread1 = new Thread(EquationThreads.firstEquationThread(latch, barrier));
-        // MA = MT * (MT + MZ) - MZ * MT
-        Thread thread2 = new Thread(EquationThreads.secondEquationThread(latch, barrier));
+        ExecutorService executorService = Executors.newFixedThreadPool(2); // Create a fixed thread pool with 2 threads
 
-        thread1.start();
-        thread2.start();
+        // Y = D * MT + max(B) * D
+        executorService.execute(EquationThreads.firstEquationThread(latch, barrier)); // Submit first equation thread to the executor service
+        // MA = MT * (MT + MZ) - MZ * MT
+        executorService.execute(EquationThreads.secondEquationThread(latch, barrier)); // Submit second equation thread to the executor service
+
+        executorService.shutdown(); // Shutdown the executor service
 
         try {
             latch.await(); // Wait for both equations to finish
