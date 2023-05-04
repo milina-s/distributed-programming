@@ -22,6 +22,8 @@ public class Main {
 
     public static void main(String[] args) {
 
+        long startTime = System.currentTimeMillis();
+
         int n = 200;
 //        System.out.println("Enter n: ");
 //        Scanner scanner = new Scanner(System.in);
@@ -47,7 +49,9 @@ public class Main {
             e.printStackTrace();
         }
 
+        long endTime = System.currentTimeMillis();
         System.out.println("Program finished");
+        System.out.println("Total time: " + (endTime - startTime) + " ms");
     }
 
     private static void readData(int n) {
