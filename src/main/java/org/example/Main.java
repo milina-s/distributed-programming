@@ -2,10 +2,9 @@ package org.example;
 
 import java.io.FileNotFoundException;
 import java.util.Scanner;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.example.Data.*;
 
@@ -21,6 +20,7 @@ public class Main {
 
     public static double[][] MT, MZ, MA;
     public static double[][] D, B, Y;
+    public static Lock lock = new ReentrantLock(); // Lock for synchronization
 
     public static void main(String[] args) {
 
@@ -40,15 +40,17 @@ public class Main {
         ExecutorService executorService = Executors.newFixedThreadPool(2); // Create a fixed thread pool with 2 threads
 
         // Y = D * MT + max(B) * D
-        executorService.execute(EquationThreads.firstEquationThread(latch, barrier)); // Submit first equation thread to the executor service
+        Future<double[][]> equation1 = executorService.submit(EquationThreads.firstEquationThread(latch, barrier)); // Submit first equation thread to the executor service
         // MA = MT * (MT + MZ) - MZ * MT
-        executorService.execute(EquationThreads.secondEquationThread(latch, barrier)); // Submit second equation thread to the executor service
+        Future<double[][]> equation2 = executorService.submit(EquationThreads.secondEquationThread(latch, barrier)); // Submit second equation thread to the executor service
 
         executorService.shutdown(); // Shutdown the executor service
 
         try {
             latch.await(); // Wait for both equations to finish
-        } catch (InterruptedException e) {
+            Y = equation1.get(); // Get the result of the first equation
+            MA = equation2.get(); // Get the result of the second equation
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
 
@@ -56,6 +58,7 @@ public class Main {
         System.out.println("Program finished");
         System.out.println("Total time: " + (endTime - startTime) + " ms");
     }
+
 
     private static void readData(int n) {
         try {

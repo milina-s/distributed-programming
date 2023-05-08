@@ -56,7 +56,7 @@ public class Data {
         return result;
     }
 
-    public synchronized static void print(String name, double[][] matrix) {
+    public static void print(String name, double[][] matrix) {
         System.out.println(name + ":");
         for (double[] doubles : matrix) {
             for (double aDouble : doubles) {

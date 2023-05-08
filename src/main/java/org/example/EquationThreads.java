@@ -1,5 +1,6 @@
 package org.example;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 
@@ -7,7 +8,7 @@ import static org.example.Main.*;
 
 public class EquationThreads {
 
-    public static Runnable firstEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
+    public static Callable<double[][]> firstEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
         return () -> {
             Thread.currentThread().setName("First equation thread");
             System.out.println(Thread.currentThread().getName() + " was started");
@@ -31,17 +32,24 @@ public class EquationThreads {
             // Y = D * MT + max(B) * D
             double[][] Y = Operations.sum(matrixMult1, matrixMult2);
 
-            Main.Y = Y;
-            Data.saveToFile("Y", Y);
-            Data.print("Y", Y);
+            lock.lock(); // Acquire the lock before modifying shared data
+            try {
+//                Main.Y = Y;
+                Data.saveToFile("Y", Y);
+                Data.print("Y", Y);
+            } finally {
+                lock.unlock(); // Release the lock after modifying shared data
+            }
+
             long endTime = System.currentTimeMillis();
             System.out.println(Thread.currentThread().getName() + " was finished in " + (endTime - startTime) + " ms");
 
             latch.countDown(); // Signal that this equation has finished
+            return Y; // Return the result
         };
     }
 
-    public static Runnable secondEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
+    public static Callable<double[][]> secondEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
         return () -> {
             Thread.currentThread().setName("Second equation thread");
             System.out.println(Thread.currentThread().getName() + " was started");
@@ -65,13 +73,20 @@ public class EquationThreads {
             // MA = MT * (MT + MZ) - MZ * MT
             double[][] MA = Operations.subtract(matrixSum, matrixMult);
 
-            Main.MA = MA;
-            Data.saveToFile("MA", MA);
-            Data.print("MA", MA);
+            lock.lock(); // Acquire the lock before modifying shared data
+            try {
+//                Main.MA = MA;
+                Data.saveToFile("MA", MA);
+                Data.print("MA", MA);
+            } finally {
+                lock.unlock(); // Release the lock after modifying shared data
+            }
+
             long endTime = System.currentTimeMillis();
             System.out.println(Thread.currentThread().getName() + " was finished in " + (endTime - startTime) + " ms");
 
             latch.countDown(); // Signal that this equation has finished
+            return MA; // Return the result
         };
     }
 }
