@@ -37,20 +37,23 @@ public class Main {
         CountDownLatch latch = new CountDownLatch(2); // To wait for both equations to finish
         CyclicBarrier barrier = new CyclicBarrier(2); // To synchronize the start of both equations
 
-        ExecutorService executorService = Executors.newFixedThreadPool(2); // Create a fixed thread pool with 2 threads
+        ForkJoinPool pool = new ForkJoinPool(2); // Create a pool of threads with parallelism level of 2
 
         // Y = D * MT + max(B) * D
-        Future<double[][]> equation1 = executorService.submit(EquationThreads.firstEquationThread(latch, barrier)); // Submit first equation thread to the executor service
+        ForkJoinTask<double[][]> equation1 = pool.submit(EquationThreads.firstEquationThread(latch, barrier)); // Submit first equation task to the pool
         // MA = MT * (MT + MZ) - MZ * MT
-        Future<double[][]> equation2 = executorService.submit(EquationThreads.secondEquationThread(latch, barrier)); // Submit second equation thread to the executor service
+        ForkJoinTask<double[][]> equation2 = pool.submit(EquationThreads.secondEquationThread(latch, barrier)); // Submit second equation task to the pool
 
-        executorService.shutdown(); // Shutdown the executor service
+        pool.shutdown(); // Shutdown the pool
+
 
         try {
             latch.await(); // Wait for both equations to finish
             Y = equation1.get(); // Get the result of the first equation
             MA = equation2.get(); // Get the result of the second equation
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
