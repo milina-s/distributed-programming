@@ -1,25 +1,19 @@
 package org.example;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.RecursiveAction;
 
 import static org.example.Main.*;
 
 public class EquationThreads {
 
-    public static RecursiveTask<double[][]> firstEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
-        return new RecursiveTask<>() {
+    public static RecursiveAction firstEquationThread(CountDownLatch latch, BlockingQueue<double[][]> resultQueue) {
+        return new RecursiveAction() {
             @Override
-            protected double[][] compute() {
+            protected void compute() {
                 Thread.currentThread().setName("First equation thread");
                 System.out.println(Thread.currentThread().getName() + " was started");
-
-                try {
-                    barrier.await(); // Wait for both equations to reach the barrier
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
 
                 long startTime = System.currentTimeMillis();
 
@@ -34,36 +28,26 @@ public class EquationThreads {
                 // Y = D * MT + max(B) * D
                 double[][] Y = Operations.sum(matrixMult1, matrixMult2);
 
-                lock.lock(); // Acquire the lock before modifying shared data
-                try {
-                    // Main.Y = Y;
-                    Data.saveToFile("Y", Y);
-                    Data.print("Y", Y);
-                } finally {
-                    lock.unlock(); // Release the lock after modifying shared data
-                }
-
                 long endTime = System.currentTimeMillis();
                 System.out.println(Thread.currentThread().getName() + " was finished in " + (endTime - startTime) + " ms");
 
+                try {
+                    resultQueue.put(Y); // Add the result to the queue
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
                 latch.countDown(); // Signal that this equation has finished
-                return Y; // Return the result
             }
         };
     }
 
-    public static RecursiveTask<double[][]> secondEquationThread(CountDownLatch latch, CyclicBarrier barrier) {
-        return new RecursiveTask<>() {
+    public static RecursiveAction secondEquationThread(CountDownLatch latch, BlockingQueue<double[][]> resultQueue) {
+        return new RecursiveAction() {
             @Override
-            protected double[][] compute() {
+            protected void compute() {
                 Thread.currentThread().setName("Second equation thread");
                 System.out.println(Thread.currentThread().getName() + " was started");
-
-                try {
-                    barrier.await(); // Wait for both equations to reach the barrier
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
 
                 long startTime = System.currentTimeMillis();
 
@@ -78,20 +62,16 @@ public class EquationThreads {
                 // MA = MT * (MT + MZ) - MZ * MT
                 double[][] MA = Operations.subtract(matrixSum, matrixMult);
 
-                lock.lock(); // Acquire the lock before modifying shared data
-                try {
-                    // Main.MA = MA;
-                    Data.saveToFile("MA", MA);
-                    Data.print("MA", MA);
-                } finally {
-                    lock.unlock(); // Release the lock after modifying shared data
-                }
-
                 long endTime = System.currentTimeMillis();
                 System.out.println(Thread.currentThread().getName() + " was finished in " + (endTime - startTime) + " ms");
 
+                try {
+                    resultQueue.put(MA); // Add the result to the queue
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
                 latch.countDown(); // Signal that this equation has finished
-                return MA; // Return the result
             }
         };
     }

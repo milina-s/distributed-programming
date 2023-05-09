@@ -18,9 +18,12 @@ import static org.example.Data.*;
 
 public class Main {
 
-    public static double[][] MT, MZ, MA;
-    public static double[][] D, B, Y;
+    public static double[][] MT, MZ;
+    public static double[][] D, B;
     public static Lock lock = new ReentrantLock(); // Lock for synchronization
+    public static BlockingQueue<double[][]> resultQueue = new ArrayBlockingQueue<>(2); // Shared queue to hold equation results
+
+
 
     public static void main(String[] args) {
 
@@ -34,23 +37,40 @@ public class Main {
 //        generateData(n);
         readData(n);
 
-        CountDownLatch latch = new CountDownLatch(2); // To wait for both equations to finish
-        CyclicBarrier barrier = new CyclicBarrier(2); // To synchronize the start of both equations
+        CountDownLatch latch = new CountDownLatch(3); // To wait for both equations to finish
 
         ForkJoinPool pool = new ForkJoinPool(2); // Create a pool of threads with parallelism level of 2
 
         // Y = D * MT + max(B) * D
-        ForkJoinTask<double[][]> equation1 = pool.submit(EquationThreads.firstEquationThread(latch, barrier)); // Submit first equation task to the pool
+        pool.submit(EquationThreads.firstEquationThread(latch, resultQueue)); // Submit first equation task to the pool
         // MA = MT * (MT + MZ) - MZ * MT
-        ForkJoinTask<double[][]> equation2 = pool.submit(EquationThreads.secondEquationThread(latch, barrier)); // Submit second equation task to the pool
+        pool.submit(EquationThreads.secondEquationThread(latch, resultQueue)); // Submit second equation task to the pool
+
+        new Thread(() -> {
+            try {
+                int count = 0;
+                while (count < 2) {
+                    double[][] result = resultQueue.take(); // Take the next result from the queue
+                    String equationName = result.length == 1 ? "Y" : "MA";
+                    lock.lock(); // Acquire the lock before modifying shared data
+                    try {
+                        Data.saveToFile(equationName, result);
+                        Data.print(equationName, result);
+                        count++;
+                    } finally {
+                        lock.unlock(); // Release the lock after modifying shared data
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            latch.countDown(); // Signal that this thread has finished
+        }).start();
 
         pool.shutdown(); // Shutdown the pool
 
-
         try {
             latch.await(); // Wait for both equations to finish
-            Y = equation1.get(); // Get the result of the first equation
-            MA = equation2.get(); // Get the result of the second equation
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (Exception e) {
